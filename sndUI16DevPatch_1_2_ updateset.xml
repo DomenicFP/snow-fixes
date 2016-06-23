@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<unload unload_date="2016-05-01 15:34:25">
+<sys_remote_update_set action="INSERT_OR_UPDATE">
+<application display_value="Global">global</application>
+<application_name>Global</application_name>
+<application_scope>global</application_scope>
+<application_version/>
+<collisions/>
+<commit_date/>
+<deleted/>
+<description>UI16 Developer Patch for Geneva and Helsinki
+James Neale &lt;james@sndeveloper.com&gt;</description>
+<inserted/>
+<name>SND UI16 Developer Patch 1.2</name>
+<origin_sys_id/>
+<release_date/>
+<remote_sys_id>48e3bdb20f031a0094f3c09ce1050e34</remote_sys_id>
+<state>loaded</state>
+<summary/>
+<sys_created_by>james@sndeveloper.com_SHARE</sys_created_by>
+<sys_created_on>2016-05-01 15:34:24</sys_created_on>
+<sys_id>a2450e760f031a0094f3c09ce1050e88</sys_id>
+<sys_mod_count>0</sys_mod_count>
+<sys_updated_by>james@sndeveloper.com_SHARE</sys_updated_by>
+<sys_updated_on>2016-05-01 15:34:24</sys_updated_on>
+<update_set display_value=""/>
+<update_source display_value=""/>
+<updated/>
+</sys_remote_update_set>
+<sys_update_xml action="INSERT_OR_UPDATE">
+<action>INSERT_OR_UPDATE</action>
+<application display_value="Global">global</application>
+<category>customer</category>
+<comments/>
+<name>sys_ui_script_4b9d58530fd81200c55a09ece1050e8f</name>
+<payload><![CDATA[<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_script"><sys_ui_script action="INSERT_OR_UPDATE"><active>true</active><description>UI16 Developer Patch&#13;
+- Quick access to navigator module/application records using ALT + right click&#13;
+- Auto resize of the application/update set pickers in the header&#13;
+- Enable icons for application/update set pickers.&#13;
+&#13;
+James Neale &lt;james@sndeveloper.com&gt;</description><global>true</global><name>sndUI16DevPatch</name><script>/*!&#13;
+  UI16 Developer Patch&#13;
+  - Quick access to navigator module/application records&#13;
+  - Auto resize of the application/update set pickers in the header&#13;
+  - Enable icons for application/update set pickers.&#13;
+&#13;
+  James Neale &lt;james@sndeveloper.com&gt;&#13;
+*/&#13;
+&#13;
+if (!window.top.hasOwnProperty('sndUI16DevPatch')) {&#13;
+  jslog('sndUI16DevPatch loading in top window.');&#13;
+  (function (t) {&#13;
+    var i;&#13;
+    t.sndUI16DevPatch = null;&#13;
+&#13;
+    // run an interval because depending on ServiceNow version, this script&#13;
+    // can load before jQuery does.&#13;
+    i = setInterval(function () {&#13;
+      if (typeof t.jQuery === 'function') {&#13;
+        t.$j.getScript('/sndUI16DevPatch.jsdbx');&#13;
+        clearInterval(i);&#13;
+      }&#13;
+    }, 500);&#13;
+  })(window.top);&#13;
+}&#13;
+&#13;
+else if (window.top.sndUI16DevPatch != null) {&#13;
+  //jslog('sndUI16DevPatch already applied!');&#13;
+}&#13;
+&#13;
+else if (window == window.top) {&#13;
+  jslog('Running sndUI16DevPatch...');&#13;
+  (function () {&#13;
+&#13;
+var config = {&#13;
+&#13;
+  // Patch the navigator right click context menu&#13;
+  navigator_context: {&#13;
+    active: true,&#13;
+&#13;
+    // an event object key name (alt, ctrl, shift, meta)&#13;
+    // alt + right click cannot be used in internet explorer as alt just&#13;
+    // triggers the keyboard menu.&#13;
+    hold_key: 'ctrlKey'&#13;
+  },&#13;
+&#13;
+  // Patch the application and update set picker widths&#13;
+  picker_width: {&#13;
+    active: true,&#13;
+&#13;
+    // Integer. Maximum width in pixels we would ever really need&#13;
+    max_width: 300,&#13;
+&#13;
+    // Integer. Minimum width in pixels.&#13;
+    // We use 120 from ServiceNow CSS class .navpage-pickers .selector&#13;
+    min_width: 120,&#13;
+&#13;
+    // Integer. Time in ms to wait so that everything can load. The patch&#13;
+    // is applied every second until this timeout.&#13;
+    load_timeout: 5500&#13;
+  },&#13;
+&#13;
+  // Patch the application and update set picker icons&#13;
+  picker_icon: {&#13;
+    active: true&#13;
+  }&#13;
+&#13;
+};&#13;
+&#13;
+    /**&#13;
+      summary:&#13;
+        Check if we are using UI16 by looking for the overview help element.&#13;
+        Thanks to Tim Boelema for finding this element and sharing on community.&#13;
+    **/&#13;
+    function isUI16() {&#13;
+      if (!window.top.angular) return false;&#13;
+      var a = window.top.angular.element('overviewhelp').attr('page-name');&#13;
+      return a == 'ui16' || a == 'helsinki';&#13;
+    }&#13;
+&#13;
+    /**&#13;
+    summary:&#13;
+      Allow quick access to navigator records in Geneva&#13;
+    description:&#13;
+      Holding a key and clicking mouse button 2 will open the&#13;
+      application or module record that was clicked.&#13;
+      This saves going to applications or modules to find it.&#13;
+    **/&#13;
+    function navigatorPatch() {&#13;
+      $j('#gsft_nav').on('contextmenu', function(e) {&#13;
+        if (e[config.navigator_context.hold_key]) {&#13;
+          jslog('sndUI16DevPatch opening navigation module');&#13;
+          e.preventDefault();&#13;
+          var $el = $j(e.target);&#13;
+          var target;&#13;
+          var id = $el.attr('data-id');&#13;
+          if (!id) {&#13;
+            return;&#13;
+          }&#13;
+          target = $el.hasClass('nav-app') ?&#13;
+            '/sys_app_application.do' :&#13;
+            '/sys_app_module.do';&#13;
+          openLink(target + '?sys_id=' + id);&#13;
+        }&#13;
+      });&#13;
+      jslog('sndUI16DevPatch navigator patch applied');&#13;
+    }&#13;
+&#13;
+    /**&#13;
+      summary:&#13;
+        Update the developer choice list widths to be a bit wider&#13;
+      description:&#13;
+        Gets the widths of various header elements and calculates&#13;
+        the remaining width available then divides it between the&#13;
+        pickers shown.&#13;
+    **/&#13;
+    function pickerWidthPatch() {&#13;
+      var max_width = config.picker_width.max_width,&#13;
+          oobWidth = config.picker_width.min_width,&#13;
+          pickers = $j('.navpage-pickers .selector.three-controls'),&#13;
+          navWidth,&#13;
+          logoWidth,&#13;
+          floatWidth,&#13;
+          diff,&#13;
+          size;&#13;
+&#13;
+      if (!pickers.length) {&#13;
+        jslog('sndUI16DevPatch picked width patch failed. No pickers found.');&#13;
+        return;&#13;
+      }&#13;
+&#13;
+      pickers.css('width', ''); // reset so we recalculate&#13;
+&#13;
+      navWidth = $j('header.navpage-header').width();&#13;
+      logoWidth = $j('div.navbar-header').outerWidth();&#13;
+      floatWidth = $j('div.navbar-right').outerWidth();&#13;
+&#13;
+      diff = parseInt(navWidth, 10) - parseInt(logoWidth, 10) - parseInt(floatWidth, 10);&#13;
+      size = 100 + (diff / pickers.length);&#13;
+&#13;
+      size = size &lt; oobWidth ? '' : size &gt; max_width ? max_width : size;&#13;
+      pickers.css('width', size);&#13;
+&#13;
+      jslog('sndUI16DevPatch picker width patch applied (diff: ' + diff + '; size: ' + size + ')');&#13;
+    }&#13;
+&#13;
+    /**&#13;
+      summary:&#13;
+        Make the update set and application icons clickable&#13;
+      description:&#13;
+        Geneva doesn't allow you to get to the update sets or applications&#13;
+        easily from the header because the icons are not links.&#13;
+        This makes the icons clickable.&#13;
+    **/&#13;
+    function pickerIconPatch() {&#13;
+&#13;
+      var pickers;&#13;
+&#13;
+      // patch update set picker&#13;
+      pickers = $j('.concourse-update-set-picker span.label-icon');&#13;
+      if (pickers.length) {&#13;
+        pickers.on('click', function () {&#13;
+          var sys_id = $j('#update_set_picker_select').val();&#13;
+          if (sys_id) {&#13;
+            sys_id = sys_id.split(':').pop(); // remove 'string:' prefix&#13;
+            openLink('/sys_update_set.do?sys_id=' + sys_id);&#13;
+          } else {&#13;
+            jslog('sndUI16DevPatch icon picker patch unable to find update set picker sys_id.');&#13;
+          }&#13;
+        }).css('cursor', 'pointer');&#13;
+        jslog('sndUI16DevPatch icon picker patch applied to update set picker.');&#13;
+      } else {&#13;
+        jslog('sndUI16DevPatch icon picker patch unable to find update set picker.');&#13;
+      }&#13;
+&#13;
+      // patch application picker&#13;
+      pickers = $j('.concourse-application-picker span.label-icon');&#13;
+      if (pickers.length) {&#13;
+        pickers.on('click', function () {&#13;
+          var sys_id = $j('#application_picker_select').val();&#13;
+          if (sys_id) {&#13;
+            sys_id = sys_id.split(':').pop(); // remove 'string:' prefix&#13;
+            openLink('/sys_scope.do?sys_id=' + sys_id);&#13;
+          } else {&#13;
+            jslog('sndUI16DevPatch icon picker patch unable to find application picker sys_id.');&#13;
+          }&#13;
+        }).css('cursor', 'pointer');&#13;
+        jslog('sndUI16DevPatch icon picker patch applied to application picker.');&#13;
+      } else {&#13;
+        jslog('sndUI16DevPatch icon picker patch unable to find application picker.');&#13;
+      }&#13;
+&#13;
+    }&#13;
+&#13;
+    function openLink(target) {&#13;
+      jslog('sndUI16DevPatch opening target: ' + target);&#13;
+      var frame = $j('#gsft_main');&#13;
+      if (frame.length) {&#13;
+        frame[0].src = target;&#13;
+      } else {&#13;
+        jslog('&gt; gsftMain frame not found.');&#13;
+      }&#13;
+    }&#13;
+&#13;
+    function patch() {&#13;
+      var timer;&#13;
+&#13;
+      // === run the navigator module opening mod ===&#13;
+      if (config.navigator_context.active) {&#13;
+        navigatorPatch();&#13;
+      }&#13;
+&#13;
+      // === enhance the picker width ===&#13;
+      if (config.picker_width.active) {&#13;
+&#13;
+        // run the picker mod every second while we wait for angular to finish loading&#13;
+        // this is because otherwise the header can disappear as things load due to width being too big&#13;
+        timer = setInterval(pickerWidthPatch, 1000);&#13;
+&#13;
+        // clear the interval&#13;
+        setTimeout(function () {&#13;
+          clearInterval(timer);&#13;
+        }, config.picker_width.load_timeout);&#13;
+&#13;
+        // resizing the window will resize the pickers&#13;
+        angular.element(window).on('resize', pickerWidthPatch);&#13;
+      }&#13;
+&#13;
+      // === make the picker icons clickable ===&#13;
+      if (config.picker_icon.active) {&#13;
+        pickerIconPatch();&#13;
+      }&#13;
+    }&#13;
+&#13;
+    $j(document).ready(function () {&#13;
+      try {&#13;
+        if ((',' + window.NOW.user.roles + ',').indexOf(',admin,') &gt; -1) {&#13;
+          if (!isUI16()) {&#13;
+            window.sndUI16DevPatch = false;&#13;
+            jslog('sndUI16DevPatch ignored. Not UI16.')&#13;
+          } else {&#13;
+            patch();&#13;
+            window.sndUI16DevPatch = true;&#13;
+          }&#13;
+        }&#13;
+      } catch (e) {&#13;
+        jslog('SND Developer Patch UI16 mod failure: ' + e);&#13;
+      }&#13;
+    });&#13;
+&#13;
+  })();&#13;
+}</script><script_name/><sys_class_name>sys_ui_script</sys_class_name><sys_created_by>james@snd_SHARE</sys_created_by><sys_created_on>2015-12-18 04:26:09</sys_created_on><sys_customer_update>true</sys_customer_update><sys_id>4b9d58530fd81200c55a09ece1050e8f</sys_id><sys_mod_count>72</sys_mod_count><sys_name>sndUI16DevPatch</sys_name><sys_package display_value="Global" source="global">global</sys_package><sys_policy/><sys_replace_on_upgrade>false</sys_replace_on_upgrade><sys_scope display_value="Global">global</sys_scope><sys_update_name>sys_ui_script_4b9d58530fd81200c55a09ece1050e8f</sys_update_name><sys_updated_by>james@sndeveloper.com_SHARE</sys_updated_by><sys_updated_on>2016-05-01 15:33:29</sys_updated_on><use_scoped_format>false</use_scoped_format></sys_ui_script></record_update>]]></payload>
+<remote_update_set display_value="SND UI16 Developer Patch 1.2">a2450e760f031a0094f3c09ce1050e88</remote_update_set>
+<replace_on_upgrade>false</replace_on_upgrade>
+<sys_created_by>james@sndeveloper.com_SHARE</sys_created_by>
+<sys_created_on>2016-05-01 15:34:24</sys_created_on>
+<sys_id>e2450e760f031a0094f3c09ce1050e88</sys_id>
+<sys_mod_count>0</sys_mod_count>
+<sys_updated_by>james@sndeveloper.com_SHARE</sys_updated_by>
+<sys_updated_on>2016-05-01 15:34:24</sys_updated_on>
+<table/>
+<target_name>sndUI16DevPatch</target_name>
+<type>UI Script</type>
+<update_domain>global</update_domain>
+<update_set display_value=""/>
+<view/>
+</sys_update_xml>
+<sys_update_xml action="INSERT_OR_UPDATE">
+<action>INSERT_OR_UPDATE</action>
+<application display_value="Global">global</application>
+<category>customer</category>
+<comments/>
+<name>sys_trigger_1cd433f16f85210015244035eb3ee411</name>
+<payload><![CDATA[<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_trigger"><sys_trigger action="INSERT_OR_UPDATE"><application/><calendar/><claimed_by/><document/><document_key/><error_count>0</error_count><job_context/><job_id display_value="RunScriptJob">81c92ce9c0a8016400e5f0d2f784ea78</job_id><last_error/><log>false</log><maintenance>false</maintenance><max_drift/><name>Share Install Logger</name><next_action>2014-01-01 23:29:16</next_action><parent/><priority>100</priority><processing_duration>0</processing_duration><repeat/><run_count>0</run_count><run_dayofmonth/><run_dayofweek>1</run_dayofweek><run_month>1</run_month><run_time>1970-01-01 08:00:00</run_time><run_weekinmonth>1</run_weekinmonth><script>var logClient = new GlideSimpleHTTPClient('https://share.servicenow.com/installLogger.do');&#13;
+var query_string = 'installed_by=' + gs.getUserName() + '&amp;instance_name=' + gs.getProperty('instance_name') + '&amp;artifact=fff54afe1387da004e8cd4a76144b093&amp;content=a447a39be19c1a007c390227ffa71e75';&#13;
+gs.log('posting to: ' + query_string);&#13;
+logClient.get(query_string);</script><state>0</state><sys_created_by/><sys_created_on/><sys_id>1cd433f16f85210015244035eb3ee411</sys_id><sys_mod_count/><sys_scope display_value="Global">global</sys_scope><sys_updated_by/><sys_updated_on/><system_id/><trigger_class>DEFAULT</trigger_class><trigger_type>0</trigger_type></sys_trigger></record_update>]]></payload>
+<remote_update_set display_value="SND UI16 Developer Patch 1.2">a2450e760f031a0094f3c09ce1050e88</remote_update_set>
+<replace_on_upgrade>false</replace_on_upgrade>
+<sys_created_by>bharath.prathipati@snc</sys_created_by>
+<sys_created_on>2014-06-02 22:30:02</sys_created_on>
+<sys_id>b31573f16f85210015244035eb3ee470</sys_id>
+<sys_mod_count>0</sys_mod_count>
+<sys_updated_by>bharath.prathipati@snc</sys_updated_by>
+<sys_updated_on>2014-06-02 22:30:02</sys_updated_on>
+<table/>
+<target_name>Share Install Logger</target_name>
+<type>Schedule Item</type>
+<update_domain>global</update_domain>
+<update_set display_value=""/>
+<view/>
+</sys_update_xml></unload>
